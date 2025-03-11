@@ -5,6 +5,7 @@ import android.content.pm.PackageManager.NameNotFoundException
 import android.os.Build
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -22,13 +23,13 @@ class FkUserAgentPlugin : FlutterPlugin, MethodCallHandler {
   private var applicationContext: Context? = null
   private var constants: MutableMap<String, Any>? = null
 
-  override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPluginBinding) {
-    channel = MethodChannel(flutterPluginBinding.getBinaryMessenger(), "fk_user_agent")
-    channel.setMethodCallHandler(this)
-    applicationContext = flutterPluginBinding.getApplicationContext()
+  override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    channel = MethodChannel(flutterPluginBinding.binaryMessenger, "fk_user_agent")
+    channel?.setMethodCallHandler(this)
+    applicationContext = flutterPluginBinding.applicationContext
   }
 
-  override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+  override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
     if ("getProperties" == call.method) {
       result.success(properties)
     } else {
@@ -36,10 +37,10 @@ class FkUserAgentPlugin : FlutterPlugin, MethodCallHandler {
     }
   }
 
-  private val properties: Map<String, Any>
+  private val properties: MutableMap<String, Any>
     get() {
       if (constants != null) {
-        return constants
+        return constants as MutableMap<String, Any>
       }
       constants = HashMap()
 
@@ -57,51 +58,46 @@ class FkUserAgentPlugin : FlutterPlugin, MethodCallHandler {
         applicationName = applicationContext!!.applicationInfo.loadLabel(
           applicationContext!!.packageManager
         ).toString()
-        applicationVersion = info.versionName
+        applicationVersion = info.versionName.toString()
         buildNumber = info.versionCode
         packageUserAgent = "$shortPackageName/$applicationVersion.$buildNumber $userAgent"
       } catch (e: NameNotFoundException) {
         e.printStackTrace()
       }
 
-      constants["systemName"] = "Android"
-      constants["systemVersion"] = Build.VERSION.RELEASE
-      constants["packageName"] = packageName
-      constants["shortPackageName"] = shortPackageName
-      constants["applicationName"] = applicationName
-      constants["applicationVersion"] = applicationVersion
-      constants["applicationBuildNumber"] = buildNumber
-      constants["packageUserAgent"] = packageUserAgent
-      constants["userAgent"] = userAgent
-      constants["webViewUserAgent"] = webViewUserAgent
+      (constants as HashMap<String, Any>)["systemName"] = "Android"
+      (constants as HashMap<String, Any>)["systemVersion"] = Build.VERSION.RELEASE
+      (constants as HashMap<String, Any>)["packageName"] = packageName
+      (constants as HashMap<String, Any>)["shortPackageName"] = shortPackageName
+      (constants as HashMap<String, Any>)["applicationName"] = applicationName
+      (constants as HashMap<String, Any>)["applicationVersion"] = applicationVersion
+      (constants as HashMap<String, Any>)["applicationBuildNumber"] = buildNumber
+      (constants as HashMap<String, Any>)["packageUserAgent"] = packageUserAgent
+      (constants as HashMap<String, Any>)["userAgent"] = userAgent
+      (constants as HashMap<String, Any>)["webViewUserAgent"] = webViewUserAgent
 
-      return constants
+      return constants as HashMap<String, Any>
     }
 
   private val userAgent: String
     get() {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-        return System.getProperty("http.agent")
-      }
-
-      return ""
+      return System.getProperty("http.agent")?.toString() ?: ""
     }
 
   private val webViewUserAgent: String
     get() {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-        return WebSettings.getDefaultUserAgent(applicationContext)
-      }
+      return WebSettings.getDefaultUserAgent(applicationContext)
+      
 
-      val webView = WebView(applicationContext!!)
+      /*val webView = WebView(applicationContext!!)
       val userAgentString = webView.settings.userAgentString
 
       destroyWebView(webView)
 
-      return userAgentString
+      return userAgentString*/
     }
 
-  private fun destroyWebView(webView: WebView) {
+  /*private fun destroyWebView(webView: WebView) {
     webView.loadUrl("about:blank")
     webView.stopLoading()
 
@@ -111,12 +107,13 @@ class FkUserAgentPlugin : FlutterPlugin, MethodCallHandler {
 
     // NOTE: This can occasionally cause a segfault below API 17 (4.2)
     webView.destroy()
-  }
+  }*/
 
-  override fun onDetachedFromEngine(@NonNull binding: FlutterPluginBinding?) {
-    channel.setMethodCallHandler(null)
+  override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+    channel?.setMethodCallHandler(null)
     channel = null
     applicationContext = null
   }
+
 }
 
